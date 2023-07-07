@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Cassandra Monitor</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65"
+          crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-kenU1KFdBIe4zVF0s0G1M5b4hcpxyD9F7jL+jjXkk+Q2h455rYXK/7HAuoJl+0I4"
+            crossorigin="anonymous"></script>
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+    <script th:src="@{/js/home.js}"></script>
+</head>
+<body>
+
+<div id="main" class="container-fluid mt-2">
+    <div class="row">
+        <div class="col-6">
+            <h5><strong>Состояние кластера Cassandra</strong></h5>
+        </div>
+        <div class="col-6 float-end">
+            <a type="button" class="btn btn-primary btn-sm float-end ms-2"
+               th:href="${'/snapshotsList/' + activeCluster}">Снепшоты</a>
+            <a type="button" class="btn btn-primary btn-sm float-end" th:href="${'/compactingStat/' + activeCluster}">Состояние
+                компактинга</a>
+        </div>
+    </div>
+
+
+    <ul class="nav nav-tabs">
+        <li class="nav-item" th:each="cluster : ${clusterList}">
+            <small>
+                <a class="nav-link" aria-current="page" th:href="${'/nodeStatus/' + cluster}" th:text="${cluster}"
+                   th:classappend="${activeCluster == cluster} ? 'active fw-bold' : ''"></a>
+            </small>
+        </li>
+    </ul>
+
+    <table class="table table-sm table-bordered mt-1">
+        <thead style="background: #b8daff">
+        <tr>
+            <th class="col-1 align-middle text-center" scope="col" rowspan="2"><small>Статус</small></th>
+            <th class="col-1 align-middle text-center" scope="col" rowspan="2"><small>IP</small></th>
+            <th class="col-1 align-middle text-center" scope="col" rowspan="2"><small>Занимаемый объем</small></th>
+            <th class="col-1 align-middle text-center" scope="col" colspan="4"><small>Состояние хранилища, ГБ</small>
+            </th>
+            <th class="col-1 align-middle text-center" scope="col" colspan="2"><small>Настройки компактинга</small></th>
+            <th class="col-1 align-middle text-center" scope="col" rowspan="2"><small>Read AHead</small></th>
+            <th class="col-1 align-middle text-center" scope="col" rowspan="2"><small>Версия</small></th>
+        </tr>
+        <tr>
+            <th class="col-1 align-middle text-center" scope="col"><small>всего</small></th>
+            <th class="col-1 align-middle text-center" scope="col"><small>свободно</small></th>
+            <th class="col-1 align-middle text-center" scope="col"><small>использовано</small></th>
+            <th class="col-1 align-middle text-center" scope="col"><small>%</small></th>
+            <th class="col-1 align-middle text-center" scope="col"><small>слотов</small></th>
+            <th class="col-1 align-middle text-center" scope="col"><small>io perf
+                <button class="btn btn-sm btn-danger btn-sm float-end ms-2" onclick="setIOPerf('null', 16);"
+                        data-bs-toggle="tooltip" data-bs-placement="top"
+                        title="Установить производительность компактинга для всех нод"><i
+                        class="bi bi-pencil-square"></i></button>
+            </small></th>
+        </tr>
+        </thead>
+        <tbody id="nodeTable">
+        <tr th:each="node : ${nodeStatus}">
+            <td class="text-center"><small>
+                <i class="bi"
+                   th:classappend="${node.getStatus() == 'UN'} ? 'bi-arrow-up-circle-fill text-success' : 'bi-arrow-down-circle-fill text-danger'"></i>
+            </small></td>
+            <td class="text-center"><small><a th:text="${node.getIp()}"
+                                              th:href="${'/tableList/' + node.getIp()}"></a></small></td>
+            <td class="text-center"><small th:text="${node.getDiskSpace()}"></small></td>
+            <td class="text-center"><small th:text="${node.getDiskStat().getTotalSpace()}"></small></td>
+            <td class="text-center"><small th:text="${node.getDiskStat().getFreeSpace()}"></small></td>
+            <td class="text-center"><small th:text="${node.getDiskStat().getUsedSpace()}"></small></td>
+            <td class="text-center"><small th:text="${node.getDiskStat().getPercent()}"></small></td>
+            <td class="text-center"><small th:text="${node.getCompactingSlots()}"></small></td>
+            <td class="text-center"><small th:text="${node.getIoPerf()}">
+            </small>
+                <button class="btn btn-sm btn-primary btn-sm float-end ms-2"
+                        th:disabled="${node.getIoPerf() == 'ERROR'}"
+                        th:attr="onclick=|setIOPerf('${node.getIp()}', ${node.getIOPerfValue()});|"><i
+                        class="bi bi-pencil-square" data-bs-toggle="tooltip" data-bs-placement="top"
+                        title="Установить производительность компактинга для ноды"></i>
+                </button>
+            </td>
+            <td class="text-center"><small>
+                <i th:if="${node.getReadAHead() == 1}" class="bi bi-check-lg text-success"></i>
+                <i th:if="${node.getReadAHead() == 0}" class="bi bi-x-lg text-danger"></i>
+                <i th:if="${node.getReadAHead() == -1}" class="bi bi-question-lg text-danger"></i>
+            </small></td>
+            <td class="text-center"><small th:text="${node.getVersion()}"></small></td>
+        </tr>
+        </tbody>
+    </table>
+
+    <div class="mt-1" th:if="${errorList.size() > 0}">
+        <h5><strong>Ошибки обработки данных:</strong></h5>
+        <div th:each="errorMessage : ${errorList}">
+            <small>
+                <p th:text="${errorMessage}"></p>
+            </small>
+        </div>
+    </div>
+
+</div>
+
+<div class="modal fade" id="ioPerfDialog" tabindex="-1" aria-labelledby="modalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalLabel">Скорость I/O компактинга</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="flexRadioDefault" id="ioPerfRB1" ioPerfValue="16"
+                           checked>
+                    <label class="form-check-label" for="ioPerfRB1">
+                        16 MB/s
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="flexRadioDefault" id="ioPerfRB2"
+                           ioPerfValue="32">
+                    <label class="form-check-label" for="ioPerfRB2">
+                        32 MB/s
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="flexRadioDefault" id="ioPerfRB3"
+                           ioPerfValue="64">
+                    <label class="form-check-label" for="ioPerfRB3">
+                        64 MB/s
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="flexRadioDefault" id="ioPerfRB4"
+                           ioPerfValue="128">
+                    <label class="form-check-label" for="ioPerfRB4">
+                        128 MB/s
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button id="setIOPerfButton" type="button" class="btn btn-primary">Применить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    let activeCluster = /*[[${activeCluster}]]*/ 'default';
+</script>
+
+</body>
+</html>

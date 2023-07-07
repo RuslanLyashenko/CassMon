@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <statusListener class="ch.qos.logback.core.status.StatusListenerAsList" />
+
+    <property name="LOGS" value="logs" />
+
+    <appender name="Console" class="ch.qos.logback.core.ConsoleAppender">
+        <layout class="ch.qos.logback.classic.PatternLayout">
+            <Pattern>
+                %date %highlight(%-5level) %yellow([%thread]) %green(%logger{10}) %msg%n
+            </Pattern>
+        </layout>
+    </appender>
+
+    <appender name="CassMonAppender" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOGS}/cass_mon.log</file>
+
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <Pattern>%d %p [%t] [%X{connectorCode:-}][%X{requestId:-}] %C{1}: %m%n</Pattern>
+        </encoder>
+
+        <rollingPolicy
+                class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOGS}/cass_mon-%d{yyyy-MM-dd}.%i.log
+            </fileNamePattern>
+            <timeBasedFileNamingAndTriggeringPolicy
+                    class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>100MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+        </rollingPolicy>
+    </appender>
+
+    <logger name="ch.qos.logback" level="OFF" additivity="false">
+        <appender-ref ref="Console" />
+    </logger>
+
+    <root level="INFO">
+        <appender-ref ref="CassMonAppender" />
+        <appender-ref ref="Console" />
+    </root>
+
+</configuration>
